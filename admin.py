@@ -20,30 +20,9 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in'):
             flash('Please log in to access this page.', 'error')
-            return redirect(url_for('admin.login'))
+            return redirect(url_for('login_admin'))
         return f(*args, **kwargs)
     return decorated_function
-
-
-@admin_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    """Admin login page"""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        admin_username = current_app.config.get('ADMIN_USERNAME')
-        admin_password = current_app.config.get('ADMIN_PASSWORD')
-        
-        if username == admin_username and password == admin_password:
-            session['admin_logged_in'] = True
-            session['admin_username'] = username
-            flash('Successfully logged in!', 'success')
-            return redirect(url_for('admin.dashboard'))
-        else:
-            flash('Invalid credentials. Please try again.', 'error')
-    
-    return render_template('admin/login.html')
 
 
 @admin_bp.route('/logout')
@@ -52,7 +31,7 @@ def logout():
     session.pop('admin_logged_in', None)
     session.pop('admin_username', None)
     flash('Successfully logged out.', 'success')
-    return redirect(url_for('admin.login'))
+    return redirect(url_for('login_admin'))
 
 
 @admin_bp.route('/')

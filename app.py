@@ -26,8 +26,38 @@ csrf = CSRFProtect(app)
 init_mail(app)
 
 # Register blueprints
-from admin import admin_bp
+from admin import admin_bp, login_required
 app.register_blueprint(admin_bp)
+
+@app.route('/login/', methods=['GET', 'POST'])
+def login_admin():
+    """Admin login page at top-level /login/"""
+    from flask import session, redirect, url_for, flash, current_app
+    
+    if session.get('admin_logged_in'):
+        return redirect(url_for('admin.dashboard'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        admin_username = current_app.config.get('ADMIN_USERNAME')
+        admin_password = current_app.config.get('ADMIN_PASSWORD')
+        
+        if username == admin_username and password == admin_password:
+            session['admin_logged_in'] = True
+            session['admin_username'] = username
+            flash('Successfully logged in!', 'success')
+            return redirect(url_for('admin.dashboard'))
+        else:
+            flash('Invalid credentials. Please try again.', 'error')
+    
+    return render_template('admin/login.html')
+
+@app.route('/admin/login')
+def legacy_login_redirect():
+    """Redirect old login URL to new one"""
+    return redirect(url_for('login_admin'))
 
 # Configure logging
 logging.basicConfig(
