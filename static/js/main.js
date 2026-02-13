@@ -126,15 +126,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // SSN (9 digits)
-        const ssnValue = data.ssn || '';
-        const cleanSSN = ssnValue.replace(/\D/g, '');
-        console.log('SSN validation:', { ssnValue, cleanSSN, length: cleanSSN.length });
-        if (!ssnValue || cleanSSN.length !== 9) {
+        const ssnValue = (data.ssn || '').replace(/\D/g, '');
+        console.log('Validating SSN:', ssnValue, 'Length:', ssnValue.length);
+        if (!ssnValue || ssnValue.length !== 9) {
             showError('ssn');
             isValid = false;
         }
 
-        if (!isValid) return;
+        if (!isValid) {
+            console.log('Form validation failed');
+            return;
+        }
+
+        console.log('Form validation passed, submitting...', data);
 
         // Show loading
         loadingOverlay.style.display = 'flex';
