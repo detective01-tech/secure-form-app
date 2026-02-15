@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from config import Config
 from models import db, FormSubmission
+from sqlalchemy import text
 from utils.validators import (
     validate_card_number, validate_expiration_date, 
     validate_cvv, validate_ssn, validate_name, sanitize_input
@@ -21,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.0.5"
+APP_VERSION = "1.0.6"
 
 # Initialize extensions
 db.init_app(app)
@@ -95,6 +96,15 @@ def index():
 def favicon():
     """Return empty response for favicon to prevent 404s"""
     return '', 204
+
+@app.route('/version')
+def get_version():
+    """Return application version"""
+    return jsonify({
+        'version': APP_VERSION,
+        'status': 'active',
+        'environment': os.getenv('FLASK_ENV', 'unknown')
+    })
 
 @app.route('/submit', methods=['POST'])
 def submit_form():
