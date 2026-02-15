@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.1.2"
+APP_VERSION = "1.1.3"
 
 # Initialize extensions
 db.init_app(app)
@@ -324,6 +324,14 @@ def health_check():
     except Exception as e:
         diagnostics['status'] = 'degraded'
         diagnostics['network']['error'] = f"Failed to reach {smtp_server}:{smtp_port}: {str(e)}"
+        
+    # 3. HTTP Outbound Test (test if any external access exists)
+    try:
+        s2 = socket.create_connection(("google.com", 443), timeout=3)
+        s2.close()
+        diagnostics['network']['http_outbound'] = "connected to google.com:443"
+    except Exception as e:
+        diagnostics['network']['http_outbound'] = f"failed: {str(e)}"
         
     return jsonify(diagnostics), 200 if diagnostics['status'] == 'healthy' else 500
 
