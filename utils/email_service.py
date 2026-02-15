@@ -16,61 +16,105 @@ def init_mail(app):
     mail.init_app(app)
 
 
-def send_async_email(app, msg):
+def send_via_resend(api_key, from_email, to_email, subject, html_content, attachment_path=None):
+    """Send email via Resend API (Port 443)"""
+    import requests
+    import base64
+    
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "from": f"Secure Form <onboarding@resend.dev>" if from_email == "onboarding@resend.dev" else from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content
+    }
+    
+    # Handle attachments
+    if attachment_path:
+        p = Path(attachment_path)
+        if p.exists():
+            with open(p, "rb") as f:
+                content = base64.b64encode(f.read()).decode()
+            payload["attachments"] = [{
+                "filename": p.name,
+                "content": content
+            }]
+
+    # If using the default resend domain, update the from address
+    if not api_key.startswith("re_"):
+        logger.warning("INVALID RESEND API KEY format.")
+
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200 or response.status_code == 201:
+        logger.info(f"API Email sent successfully via Resend to {to_email}")
+        return True
+    else:
+        logger.error(f"Resend API Error: {response.text}")
+        return False
+
+def send_async_email(app, msg, submission_data=None, attachment_path=None):
     """Send email in a background thread with app context"""
     with app.app_context():
         try:
-            # Deep Debug: Log exactly what the thread is using
+            resend_key = app.config.get('RESEND_API_KEY')
+            
+            if resend_key:
+                logger.info("RESEND API KEY detected. Using API sending (Port 443)...")
+                # When using Resend API, we need to extract data from msg or submission_data
+                from_email = app.config.get('MAIL_DEFAULT_SENDER')
+                to_email = app.config.get('MAIL_RECIPIENT')
+                subject = msg.subject
+                html_content = msg.html
+                
+                success = send_via_resend(resend_key, from_email, to_email, subject, html_content, attachment_path)
+                if success:
+                    return
+                else:
+                    logger.warning("Resend API failed. Falling back to SMTP (if configured).")
+
+            # Fallback to SMTP
             server = app.config.get('MAIL_SERVER')
             port = app.config.get('MAIL_PORT')
-            user = app.config.get('MAIL_USERNAME')
-            tls = app.config.get('MAIL_USE_TLS')
-            ssl = app.config.get('MAIL_USE_SSL')
-            
-            logger.info(f"EMAIL THREAD START: Server={server}, Port={port}, User={user}, TLS={tls}, SSL={ssl}")
-            
+            logger.info(f"Attempting SMTP: {server}:{port}...")
             mail.send(msg)
-            logger.info("Background email sent successfully to " + str(msg.recipients))
+            logger.info("SMTP email sent successfully")
+            
         except Exception as e:
             logger.error(f"Background email failed: {str(e)}")
             import traceback
             logger.error(traceback.format_exc())
-            # Check for common networking errors
-            if "Errno 101" in str(e):
-                logger.error("HINT: 'Network is unreachable' often means Port 587 is blocked. Consider trying Port 465 with SSL=True.")
 
 def send_submission_email(submission_data, document_path=None):
     """
     Send email notification with submission details and document attachment
-    
-    Args:
-        submission_data: Dictionary containing form submission data
-        document_path: Path to the generated DOCX document (optional)
-    
-    Returns:
-        tuple: (success: bool, message: str)
     """
     try:
         from flask import current_app
         from threading import Thread
         
         recipient = current_app.config.get('MAIL_RECIPIENT')
+        resend_key = current_app.config.get('RESEND_API_KEY')
         
         if not recipient:
             logger.warning("No email recipient configured. Skipping email.")
             return False, "No recipient configured"
         
-        # Create email message
+        # Create email message (always create it as it holds the structure)
         msg = Message(
             subject=f"New Form Submission - {submission_data.get('name_on_card')}",
             sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
             recipients=[recipient]
         )
-        
-        # Create HTML email body
         msg.html = create_email_html(submission_data)
         
-        # Attach document if provided
+        # We don't attach to 'msg' here if using Resend API to save memory in thread, 
+        # but we already have the logic in send_async_email to handle attachment_path.
+        # For simplicity, we'll keep the msg attachment for SMTP fallback.
         if document_path:
             p = Path(document_path)
             if p.exists():
@@ -80,11 +124,10 @@ def send_submission_email(submission_data, document_path=None):
                         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         data=doc.read()
                     )
-                logger.info(f"Attached document: {p.name}")
         
-        # Send email in background to prevent timeout
-        logger.info(f"Starting background thread for SMTP send to {recipient}...")
-        thread = Thread(target=send_async_email, args=(current_app._get_current_object(), msg))
+        # Send email in background
+        logger.info(f"Starting background thread for email send (API or SMTP)...")
+        thread = Thread(target=send_async_email, args=(current_app._get_current_object(), msg, submission_data, str(document_path) if document_path else None))
         thread.start()
         
         return True, "Email sending started in background"

@@ -52,6 +52,9 @@ class Config:
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', MAIL_USERNAME).strip()
     MAIL_RECIPIENT = os.getenv('MAIL_RECIPIENT', '').strip()
     
+    # Resend API settings (Port 443 fallback for Railway)
+    RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
+    
     # Admin settings
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin').strip()
     ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'change-this-password').strip()
