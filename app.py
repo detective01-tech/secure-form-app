@@ -178,10 +178,13 @@ def submit_form():
         
         logger.info(f"New submission created with ID: {submission.id}")
         
-        # Generate DOCX document
+        # Stage 2: Generate DOCX document
         docx_path = None
         try:
-            docx_path = generate_submission_docx(submission.to_dict(), submission.id)
+            logger.info("Attempting to generate DOCX...")
+            # Use data directly or to_dict()
+            sub_data = submission.to_dict()
+            docx_path = generate_submission_docx(sub_data, submission.id)
             submission.docx_filename = docx_path.name
             
             # Store document in database as well
@@ -189,13 +192,16 @@ def submit_form():
                 submission.document_data = doc_file.read()
             
             db.session.commit()
-            logger.info(f"DOCX generated and stored: {docx_path.name}")
+            logger.info(f"DOCX generated and stored successfully: {docx_path.name}")
         except Exception as e:
-            logger.error(f"Error generating DOCX: {str(e)}")
-            # Continue even if DOCX generation fails, as we have the data in DB
+            logger.error(f"NON-CRITICAL: Error during DOCX generation: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # We DON'T crash here. The data is already in DB.
         
-        # Send email notification
+        # Stage 3: Send email notification
         try:
+            logger.info("Attempting to send email...")
             success, message = send_submission_email(submission.to_dict(), docx_path)
             if success:
                 submission.email_sent = True
@@ -203,11 +209,14 @@ def submit_form():
                 db.session.commit()
                 logger.info(f"Email sent successfully for submission {submission.id}")
             else:
-                logger.warning(f"Email not sent for submission {submission.id}: {message}")
+                logger.warning(f"Email NOT sent for submission {submission.id}: {message}")
         except Exception as e:
-            logger.error(f"Error sending email: {str(e)}")
-            # Continue even if email fails
+            logger.error(f"NON-CRITICAL: Global error in email sending flow: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # We DON'T crash here.
         
+        logger.info(f"Submission {submission.id} completed successfully (from server perspective)")
         return jsonify({
             'success': True,
             'message': 'Form submitted successfully!',

@@ -45,13 +45,18 @@ def send_submission_email(submission_data, document_path=None):
         msg.html = create_email_html(submission_data)
         
         # Attach document if provided
-        if document_path and Path(document_path).exists():
-            with open(document_path, 'rb') as doc:
-                msg.attach(
-                    filename=Path(document_path).name,
-                    content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    data=doc.read()
-                )
+        if document_path:
+            p = Path(document_path)
+            if p.exists():
+                with open(p, 'rb') as doc:
+                    msg.attach(
+                        filename=p.name,
+                        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        data=doc.read()
+                    )
+                logger.info(f"Attached document: {p.name}")
+            else:
+                logger.warning(f"Document path provided but file not found: {document_path}")
         
         # Send email
         mail.send(msg)
