@@ -21,7 +21,7 @@ class Config:
     # Database settings
     DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR}/submissions/database.db')
     
-    # Fix for Render PostgreSQL URL (uses postgres:// instead of postgresql://)
+    # Fix for Heroku/Railway PostgreSQL URL (uses postgres:// instead of postgresql://)
     if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     

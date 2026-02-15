@@ -86,6 +86,7 @@ Access the admin dashboard at `/admin`:
 - **Dashboard**: View all submissions with statistics
 - **Search**: Filter by name, card type, or IP address
 - **Download**: Get DOCX documents for any submission
+- **Delete**: Delete any submission
 - **Email Status**: See which submissions had emails sent
 
 ## 🌐 Deployment
@@ -180,7 +181,7 @@ secure-form/
 4. Login to admin panel
 5. Verify submission appears
 6. Download document
-
+7. Delete submission
 ### Test Admin Panel
 1. Navigate to `/admin`
 2. Login with credentials
