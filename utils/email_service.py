@@ -59,12 +59,19 @@ def send_submission_email(submission_data, document_path=None):
                 logger.warning(f"Document path provided but file not found: {document_path}")
         
         # Send email
-        mail.send(msg)
-        logger.info(f"Email sent successfully to {recipient}")
-        return True, "Email sent successfully"
+        logger.info(f"Attempting SMTP send to {recipient} via {current_app.config.get('MAIL_SERVER')}...")
+        try:
+            mail.send(msg)
+            logger.info(f"Email sent successfully to {recipient}")
+            return True, "Email sent successfully"
+        except Exception as smtp_err:
+            logger.error(f"SMTP/Mail.send error: {str(smtp_err)}")
+            return False, f"SMTP Error: {str(smtp_err)}"
         
     except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"Global logic error in send_submission_email: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False, str(e)
 
 
