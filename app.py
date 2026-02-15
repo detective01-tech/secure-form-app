@@ -2,7 +2,7 @@
 Secure Form Application - Main Flask Application
 """
 from flask import Flask, render_template, request, jsonify
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from config import Config
 from models import db, FormSubmission
 from utils.validators import (
