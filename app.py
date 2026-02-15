@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.0.9"
+APP_VERSION = "1.1.0"
 
 # Initialize extensions
 db.init_app(app)

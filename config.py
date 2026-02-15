@@ -43,21 +43,22 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Email settings
-    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com').strip()
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-    MAIL_USE_SSL = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
-    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
-    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
-    MAIL_RECIPIENT = os.getenv('MAIL_RECIPIENT')  # Email to receive submissions
+    MAIL_USE_TLS = str(os.getenv('MAIL_USE_TLS', 'True')).lower().strip() == 'true'
+    MAIL_USE_SSL = str(os.getenv('MAIL_USE_SSL', 'False')).lower().strip() == 'true'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '').strip()
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '').strip()
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', MAIL_USERNAME).strip()
+    MAIL_RECIPIENT = os.getenv('MAIL_RECIPIENT', '').strip()
     
     # Admin settings
-    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
-    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'change-this-password')
+    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin').strip()
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'change-this-password').strip()
     
     @staticmethod
     def init_app(app):
         """Initialize application configuration"""
         # Create submissions folder if it doesn't exist
         Config.SUBMISSIONS_FOLDER.mkdir(exist_ok=True)
+

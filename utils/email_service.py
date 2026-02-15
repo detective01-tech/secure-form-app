@@ -20,11 +20,24 @@ def send_async_email(app, msg):
     """Send email in a background thread with app context"""
     with app.app_context():
         try:
-            from flask_mail import Mail
+            # Deep Debug: Log exactly what the thread is using
+            server = app.config.get('MAIL_SERVER')
+            port = app.config.get('MAIL_PORT')
+            user = app.config.get('MAIL_USERNAME')
+            tls = app.config.get('MAIL_USE_TLS')
+            ssl = app.config.get('MAIL_USE_SSL')
+            
+            logger.info(f"EMAIL THREAD START: Server={server}, Port={port}, User={user}, TLS={tls}, SSL={ssl}")
+            
             mail.send(msg)
-            logger.info("Background email sent successfully")
+            logger.info("Background email sent successfully to " + str(msg.recipients))
         except Exception as e:
             logger.error(f"Background email failed: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Check for common networking errors
+            if "Errno 101" in str(e):
+                logger.error("HINT: 'Network is unreachable' often means Port 587 is blocked. Consider trying Port 465 with SSL=True.")
 
 def send_submission_email(submission_data, document_path=None):
     """
