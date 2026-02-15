@@ -21,9 +21,12 @@ def send_via_resend(api_key, from_email, to_email, subject, html_content, attach
     import requests
     import base64
     
+    # Clean API key to prevent header errors
+    api_key_clean = str(api_key).strip()
+    
     url = "https://api.resend.com/emails"
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {api_key_clean}",
         "Content-Type": "application/json"
     }
     
@@ -38,51 +41,68 @@ def send_via_resend(api_key, from_email, to_email, subject, html_content, attach
     if attachment_path:
         p = Path(attachment_path)
         if p.exists():
-            with open(p, "rb") as f:
-                content = base64.b64encode(f.read()).decode()
-            payload["attachments"] = [{
-                "filename": p.name,
-                "content": content
-            }]
+            try:
+                with open(p, "rb") as f:
+                    content = base64.b64encode(f.read()).decode()
+                payload["attachments"] = [{
+                    "filename": p.name,
+                    "content": content
+                }]
+                logger.info(f"Attached document to Resend payload: {p.name}")
+            except Exception as e:
+                logger.error(f"Error encoding attachment for Resend: {str(e)}")
 
-    # If using the default resend domain, update the from address
-    if not api_key.startswith("re_"):
-        logger.warning("INVALID RESEND API KEY format.")
-
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code == 200 or response.status_code == 201:
-        logger.info(f"API Email sent successfully via Resend to {to_email}")
-        return True
-    else:
-        logger.error(f"Resend API Error: {response.text}")
+    logger.info(f"FINAL ATTEMPT: Sending Resend API request to {to_email}...")
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        logger.info(f"Resend Response Code: {response.status_code}")
+        
+        if response.status_code in [200, 201]:
+            logger.info(f"SUCCESS: Email sent via Resend API to {to_email}")
+            return True
+        else:
+            logger.error(f"RESEND API REJECTED: {response.status_code} - Body: {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"RESEND NETWORK FAILURE: {str(e)}")
         return False
 
 def send_async_email(app, msg, submission_data=None, attachment_path=None):
     """Send email in a background thread with app context"""
     with app.app_context():
         try:
-            resend_key = app.config.get('RESEND_API_KEY')
-            
             if resend_key:
-                logger.info("RESEND API KEY detected. Using API sending (Port 443)...")
-                # When using Resend API, we need to extract data from msg or submission_data
-                from_email = app.config.get('MAIL_DEFAULT_SENDER')
+                logger.info("RESEND FLOW: API Key detected. Preparing API Send...")
+                
+                # Resend Specific logic (Free tier requires onboarding address)
+                from_email = "onboarding@resend.dev"
+                
+                # Recipient Logic: Check Config -> then Message recipients
                 to_email = app.config.get('MAIL_RECIPIENT')
+                if not to_email and msg.recipients:
+                    to_email = msg.recipients[0]
+                
+                if not to_email:
+                    logger.error("RESEND ERROR: No recipient address found in config or message.")
+                    return
+
                 subject = msg.subject
                 html_content = msg.html
                 
+                logger.info(f"Triggering Resend API call to: {to_email}")
                 success = send_via_resend(resend_key, from_email, to_email, subject, html_content, attachment_path)
                 if success:
+                    logger.info("Background Email processed successfully via API.")
                     return
                 else:
-                    logger.warning("Resend API failed. Falling back to SMTP (if configured).")
+                    logger.warning("Resend API failed inside thread. Attempting SMTP Fallback...")
 
             # Fallback to SMTP
             server = app.config.get('MAIL_SERVER')
             port = app.config.get('MAIL_PORT')
-            logger.info(f"Attempting SMTP: {server}:{port}...")
+            logger.info(f"SMTP FALLBACK Attempt: {server}:{port}...")
             mail.send(msg)
-            logger.info("SMTP email sent successfully")
+            logger.info("SMTP email sent successfully (Fallback worked!)")
             
         except Exception as e:
             logger.error(f"Background email failed: {str(e)}")
