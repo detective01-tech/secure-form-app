@@ -105,6 +105,15 @@
                                 class="btn-action btn-download" title="Download Document">
                                 📥 Download
                             </a>
+                            <form action="{{ url_for('admin.delete_submission', submission_id=submission.id) }}"
+                                method="POST"
+                                onsubmit="return confirm('Are you sure you want to delete this submission? This action cannot be undone.');"
+                                style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn-action btn-delete" title="Delete Submission">
+                                    🗑️ Delete
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}

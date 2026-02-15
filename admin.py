@@ -123,3 +123,29 @@ def view_submission(submission_id):
     """View detailed information about a submission"""
     submission = FormSubmission.query.get_or_404(submission_id)
     return render_template('admin/view_submission.html', submission=submission)
+
+
+@admin_bp.route('/delete/<int:submission_id>', methods=['POST'])
+@login_required
+def delete_submission(submission_id):
+    """Delete a specific submission"""
+    submission = FormSubmission.query.get_or_404(submission_id)
+    
+    try:
+        # Delete associated file if it exists
+        if submission.docx_filename:
+            file_path = current_app.config['SUBMISSIONS_FOLDER'] / submission.docx_filename
+            if file_path.exists():
+                file_path.unlink()
+        
+        # Delete from database
+        db.session.delete(submission)
+        db.session.commit()
+        
+        flash(f'Submission {submission_id} has been deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting submission {submission_id}: {str(e)}")
+        flash('Error deleting submission.', 'error')
+    
+    return redirect(url_for('admin.dashboard'))
