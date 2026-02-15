@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.3"
 
 # Initialize extensions
 db.init_app(app)
@@ -94,8 +94,14 @@ def inject_version():
 
 @app.route('/')
 def index():
-    """Render the main form page with version for cache busting"""
-    return render_template('index.html')
+    """Render the main form page with version for cache busting and force reload"""
+    from flask import make_response
+    response = make_response(render_template('index.html'))
+    # EXPLICIT CACHE BUSTING HEADERS
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, post-check=0, pre-check=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/favicon.ico')
 def favicon():
@@ -184,7 +190,8 @@ def submit_form():
         
         # If there are validation errors, return them
         if errors:
-            logger.warning(f"Validation errors in submission: {errors}")
+            logger.warning(f"VALIDATION FAILED (400): {errors}")
+            logger.debug(f"Raw data that failed: { {k: (v if k not in ['card_number', 'cvv', 'ssn'] else '***') for k, v in data.items()} }")
             return jsonify({
                 'success': False,
                 'error': 'Form validation failed. Please check the highlighted fields.',
