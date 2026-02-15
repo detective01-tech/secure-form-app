@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 
 # Initialize extensions
 db.init_app(app)
@@ -291,12 +291,12 @@ def submit_form():
         }), 500
 
 @app.route('/health')
-def health_check():
-    """Health check endpoint with database and network diagnostics"""
+def health():
+    """Detailed health check for Railway diagnostics"""
     import socket
     diagnostics = {
         'status': 'healthy',
-        'database': 'unknown',
+        'database': 'disconnected',
         'storage': 'unknown',
         'network': {}
     }
@@ -318,13 +318,29 @@ def health_check():
     except Exception as e:
         diagnostics['storage'] = f'error: {str(e)}'
         
-    # Check Network (SMTP connectivity)
-    smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
-    smtp_port = app.config.get('MAIL_PORT', 587)
-    
+    # HTTP Outbound Test (Essential for Resend API)
+    try:
+        s2 = socket.create_connection(("google.com", 443), timeout=3)
+        s2.close()
+        diagnostics['network']['http_outbound'] = "connected to google.com:443"
+    except Exception as e:
+        diagnostics['network']['http_outbound'] = f"failed: {str(e)}"
+
+    # Resend API Check (Preferred for Cloud)
+    resend_key = app.config.get('RESEND_API_KEY')
+    if resend_key:
+        try:
+            s_res = socket.create_connection(("api.resend.com", 443), timeout=3)
+            s_res.close()
+            diagnostics['network']['resend_api'] = "connected to api.resend.com:443"
+        except Exception as e:
+            diagnostics['network']['resend_api'] = f"failed: {str(e)}"
+    else:
+        diagnostics['network']['resend_api'] = "API Key Missing"
+
     # FINAL STATUS LOGIC: 
-    # Since Railway blocks SMTP (Port 465/587), we only care about the Resend API.
-    # We remove the confusing SMTP check entirely to stop the "Network Unreachable" errors.
+    # Since Railway blocks SMTP, we ONLY care about the Resend API.
+    # We DO NOT check SMTP anymore to avoid confusing Error 101 logs.
     if diagnostics['network'].get('resend_api') == "connected to api.resend.com:443":
         diagnostics['status'] = 'healthy'
     else:
