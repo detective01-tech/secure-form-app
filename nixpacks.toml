@@ -1,8 +1,8 @@
 [setup]
-pkgs = ["python", "postgresql"]
+pkgs = ["python", "postgresql", "gcc"]
 
 [install]
-cmds = ["python -m venv .venv", ".venv/bin/pip install -r requirements.txt"]
+cmds = ["python -m venv .venv", ".venv/bin/pip install --upgrade pip", ".venv/bin/pip install -r requirements.txt"]
 
 [start]
 cmd = ".venv/bin/gunicorn --bind 0.0.0.0:$PORT app:app"
