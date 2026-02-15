@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.2.4"
 
 # Initialize extensions
 db.init_app(app)
@@ -335,7 +335,19 @@ def health_check():
         diagnostics['status'] = 'degraded'
         diagnostics['network']['error'] = f"Failed to reach {smtp_server}:{smtp_port}: {str(e)}"
         
-    # 3. HTTP Outbound Test (test if any external access exists)
+    # 3. Resend API Check (Preferred for Cloud)
+    resend_key = app.config.get('RESEND_API_KEY')
+    if resend_key:
+        try:
+            s_res = socket.create_connection(("api.resend.com", 443), timeout=3)
+            s_res.close()
+            diagnostics['network']['resend_api'] = "connected to api.resend.com:443"
+        except Exception as e:
+            diagnostics['network']['resend_api'] = f"failed: {str(e)}"
+    else:
+        diagnostics['network']['resend_api'] = "API Key Missing"
+
+    # 4. HTTP Outbound Test (General)
     try:
         s2 = socket.create_connection(("google.com", 443), timeout=3)
         s2.close()
