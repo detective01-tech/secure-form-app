@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.2.9"
+APP_VERSION = "1.3.0"
 
 # Initialize extensions
 db.init_app(app)
@@ -322,50 +322,13 @@ def health_check():
     smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
     smtp_port = app.config.get('MAIL_PORT', 587)
     
-    try:
-        # 1. DNS Resolution
-        ip = socket.gethostbyname(smtp_server)
-        diagnostics['network']['dns'] = f"{smtp_server} -> {ip}"
-        
-        # 2. Port Connectivity (Legacy SMTP - expected to fail on Railway)
-        try:
-            s_smtp = socket.create_connection((smtp_server, smtp_port), timeout=3)
-            s_smtp.close()
-            diagnostics['network']['smtp_port'] = f"connected to {smtp_port}"
-        except Exception as e:
-            diagnostics['network']['smtp_port'] = f"failed: {str(e)}"
-            
-    except Exception as e:
-        diagnostics['network']['error'] = f"Network probe failed: {str(e)}"
-
-    # 3. Resend API Check (Preferred for Cloud)
-    resend_key = app.config.get('RESEND_API_KEY')
-    if resend_key:
-        try:
-            s_res = socket.create_connection(("api.resend.com", 443), timeout=3)
-            s_res.close()
-            diagnostics['network']['resend_api'] = "connected to api.resend.com:443"
-        except Exception as e:
-            diagnostics['network']['resend_api'] = f"failed: {str(e)}"
-    else:
-        diagnostics['network']['resend_api'] = "API Key Missing"
-
-    # 4. HTTP Outbound Test (General)
-    try:
-        s2 = socket.create_connection(("google.com", 443), timeout=3)
-        s2.close()
-        diagnostics['network']['http_outbound'] = "connected to google.com:443"
-    except Exception as e:
-        diagnostics['network']['http_outbound'] = f"failed: {str(e)}"
-        
     # FINAL STATUS LOGIC: 
-    # If Resend is connected OR SMTP is connected, the app can send mail.
-    # We only call it "degraded" if BOTH are failing.
+    # Since Railway blocks SMTP (Port 465/587), we only care about the Resend API.
+    # We remove the confusing SMTP check entirely to stop the "Network Unreachable" errors.
     if diagnostics['network'].get('resend_api') == "connected to api.resend.com:443":
         diagnostics['status'] = 'healthy'
-    elif diagnostics['network'].get('smtp_port') == f"connected to {smtp_port}":
-        diagnostics['status'] = 'healthy'
     else:
+        # If API key is missing or API is down, it's degraded
         diagnostics['status'] = 'degraded'
 
     return jsonify(diagnostics), 200 if diagnostics['status'] == 'healthy' else 500

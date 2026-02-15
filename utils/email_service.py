@@ -71,6 +71,8 @@ def send_async_email(app, msg, submission_data=None, attachment_path=None):
     """Send email in a background thread with app context"""
     with app.app_context():
         try:
+            resend_key = app.config.get('RESEND_API_KEY')
+            
             if resend_key:
                 logger.info("RESEND FLOW: API Key detected. Preparing API Send...")
                 
