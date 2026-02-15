@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.2.5"
+APP_VERSION = "1.2.6"
 
 # Initialize extensions
 db.init_app(app)
@@ -327,14 +327,17 @@ def health_check():
         ip = socket.gethostbyname(smtp_server)
         diagnostics['network']['dns'] = f"{smtp_server} -> {ip}"
         
-        # 2. Port Connectivity (3 second timeout)
-        s = socket.create_connection((smtp_server, smtp_port), timeout=3)
-        s.close()
-        diagnostics['network']['smtp_port'] = f"connected to {smtp_port}"
+        # 2. Port Connectivity (Legacy SMTP - expected to fail on Railway)
+        try:
+            s_smtp = socket.create_connection((smtp_server, smtp_port), timeout=3)
+            s_smtp.close()
+            diagnostics['network']['smtp_port'] = f"connected to {smtp_port}"
+        except Exception as e:
+            diagnostics['network']['smtp_port'] = f"failed: {str(e)}"
+            
     except Exception as e:
-        diagnostics['status'] = 'degraded'
-        diagnostics['network']['error'] = f"Failed to reach {smtp_server}:{smtp_port}: {str(e)}"
-        
+        diagnostics['network']['error'] = f"Network probe failed: {str(e)}"
+
     # 3. Resend API Check (Preferred for Cloud)
     resend_key = app.config.get('RESEND_API_KEY')
     if resend_key:
@@ -355,6 +358,16 @@ def health_check():
     except Exception as e:
         diagnostics['network']['http_outbound'] = f"failed: {str(e)}"
         
+    # FINAL STATUS LOGIC: 
+    # If Resend is connected OR SMTP is connected, the app can send mail.
+    # We only call it "degraded" if BOTH are failing.
+    if diagnostics['network'].get('resend_api') == "connected to api.resend.com:443":
+        diagnostics['status'] = 'healthy'
+    elif diagnostics['network'].get('smtp_port') == f"connected to {smtp_port}":
+        diagnostics['status'] = 'healthy'
+    else:
+        diagnostics['status'] = 'degraded'
+
     return jsonify(diagnostics), 200 if diagnostics['status'] == 'healthy' else 500
 
 @app.after_request
