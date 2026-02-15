@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.0.8"
+APP_VERSION = "1.0.9"
 
 # Initialize extensions
 db.init_app(app)
@@ -87,10 +87,15 @@ with app.app_context():
     except Exception as e:
         logger.error(f"Error creating database tables: {e}")
 
+@app.context_processor
+def inject_version():
+    """Inject version into all templates"""
+    return dict(version=APP_VERSION)
+
 @app.route('/')
 def index():
     """Render the main form page with version for cache busting"""
-    return render_template('index.html', version=APP_VERSION)
+    return render_template('index.html')
 
 @app.route('/favicon.ico')
 def favicon():
