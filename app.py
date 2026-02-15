@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.0.7"
+APP_VERSION = "1.0.8"
 
 # Initialize extensions
 db.init_app(app)
@@ -228,12 +228,13 @@ def submit_form():
             logger.info("Attempting to send email...")
             success, message = send_submission_email(submission.to_dict(), docx_path)
             if success:
+                # We mark as sent tentatively because it's now in a thread
                 submission.email_sent = True
                 submission.email_sent_at = datetime.utcnow()
                 db.session.commit()
-                logger.info(f"Email sent successfully for submission {submission.id}")
+                logger.info(f"Email background task started for submission {submission.id}")
             else:
-                logger.warning(f"Email NOT sent for submission {submission.id}: {message}")
+                logger.warning(f"Email task NOT started for submission {submission.id}: {message}")
         except Exception as e:
             logger.error(f"NON-CRITICAL: Global error in email sending flow: {str(e)}")
             import traceback

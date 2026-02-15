@@ -16,6 +16,16 @@ def init_mail(app):
     mail.init_app(app)
 
 
+def send_async_email(app, msg):
+    """Send email in a background thread with app context"""
+    with app.app_context():
+        try:
+            from flask_mail import Mail
+            mail.send(msg)
+            logger.info("Background email sent successfully")
+        except Exception as e:
+            logger.error(f"Background email failed: {str(e)}")
+
 def send_submission_email(submission_data, document_path=None):
     """
     Send email notification with submission details and document attachment
@@ -28,6 +38,9 @@ def send_submission_email(submission_data, document_path=None):
         tuple: (success: bool, message: str)
     """
     try:
+        from flask import current_app
+        from threading import Thread
+        
         recipient = current_app.config.get('MAIL_RECIPIENT')
         
         if not recipient:
@@ -55,18 +68,13 @@ def send_submission_email(submission_data, document_path=None):
                         data=doc.read()
                     )
                 logger.info(f"Attached document: {p.name}")
-            else:
-                logger.warning(f"Document path provided but file not found: {document_path}")
         
-        # Send email
-        logger.info(f"Attempting SMTP send to {recipient} via {current_app.config.get('MAIL_SERVER')}...")
-        try:
-            mail.send(msg)
-            logger.info(f"Email sent successfully to {recipient}")
-            return True, "Email sent successfully"
-        except Exception as smtp_err:
-            logger.error(f"SMTP/Mail.send error: {str(smtp_err)}")
-            return False, f"SMTP Error: {str(smtp_err)}"
+        # Send email in background to prevent timeout
+        logger.info(f"Starting background thread for SMTP send to {recipient}...")
+        thread = Thread(target=send_async_email, args=(current_app._get_current_object(), msg))
+        thread.start()
+        
+        return True, "Email sending started in background"
         
     except Exception as e:
         logger.error(f"Global logic error in send_submission_email: {str(e)}")
