@@ -156,31 +156,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify(data)
             });
 
-            // Log raw response if not successful
-            if (!response.ok) {
-                console.error('Server returned error status:', response.status);
-                const text = await response.text();
-                console.error('Raw error body:', text);
-                try {
-                    const result = JSON.parse(text);
-                    alert(`Server Error (${response.status}): ${result.error || 'Check console'}`);
-                    return;
-                } catch (e) {
-                    alert(`Critical System Error (${response.status}). Please check Railway logs.`);
-                    return;
-                }
+            const text = await response.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                console.error('Could not parse JSON response:', text);
+                alert(`Critical Server Error (${response.status}). Please check Railway logs.`);
+                return;
             }
 
-            const result = await response.json();
             console.log('Server response:', result);
 
-            if (result.success) {
+            if (response.ok && result.success) {
                 // Show success
                 document.getElementById('confirmationNumber').textContent = result.confirmation_number;
                 successModal.style.display = 'flex';
             } else {
-                // Show server errors
+                // Logic for handling validation errors (even on 400 status)
                 if (result.errors) {
+                    console.log('Rendering validation errors:', result.errors);
                     Object.keys(result.errors).forEach(field => {
                         const errorEl = document.getElementById(`error-${field}`);
                         if (errorEl) {
@@ -188,8 +183,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             errorEl.parentElement.classList.add('has-error');
                         }
                     });
+
+                    // Specific alert for user
+                    alert('Form validation failed. Please correct the highlighted red fields.');
                 } else {
-                    alert(result.error || 'An error occurred');
+                    alert(result.error || `Server Error (${response.status})`);
                 }
             }
         } catch (error) {

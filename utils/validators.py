@@ -64,8 +64,15 @@ def validate_expiration_date(exp_date: str) -> tuple[bool, str]:
         if re.match(pattern, exp_date):
             try:
                 exp_datetime = datetime.strptime(exp_date, date_format)
-                # Check if card is expired
-                if exp_datetime < datetime.now():
+                # To be valid, the card must not have expired. 
+                # Cards expire at the END of the month.
+                # So we check if the first day of the FOLLOWING month is in the past.
+                if exp_datetime.month == 12:
+                    next_month = exp_datetime.replace(year=exp_datetime.year + 1, month=1, day=1)
+                else:
+                    next_month = exp_datetime.replace(month=exp_datetime.month + 1, day=1)
+                
+                if next_month < datetime.now():
                     return False, "Card has expired"
                 return True, ""
             except ValueError:
