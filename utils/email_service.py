@@ -28,7 +28,7 @@ def send_via_resend(api_key, from_email, to_email, subject, html_content, attach
     }
     
     payload = {
-        "from": f"Secure Form <onboarding@resend.dev>" if from_email == "onboarding@resend.dev" else from_email,
+        "from": "Secure Form <onboarding@resend.dev>",
         "to": [to_email],
         "subject": subject,
         "html": html_content
