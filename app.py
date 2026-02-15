@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 
 # Initialize extensions
 db.init_app(app)
@@ -282,11 +282,13 @@ def submit_form():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint with database diagnostics"""
+    """Health check endpoint with database and network diagnostics"""
+    import socket
     diagnostics = {
         'status': 'healthy',
         'database': 'unknown',
-        'storage': 'unknown'
+        'storage': 'unknown',
+        'network': {}
     }
     
     # Check database
@@ -305,6 +307,23 @@ def health_check():
         diagnostics['storage'] = 'writable'
     except Exception as e:
         diagnostics['storage'] = f'error: {str(e)}'
+        
+    # Check Network (SMTP connectivity)
+    smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
+    smtp_port = app.config.get('MAIL_PORT', 587)
+    
+    try:
+        # 1. DNS Resolution
+        ip = socket.gethostbyname(smtp_server)
+        diagnostics['network']['dns'] = f"{smtp_server} -> {ip}"
+        
+        # 2. Port Connectivity (3 second timeout)
+        s = socket.create_connection((smtp_server, smtp_port), timeout=3)
+        s.close()
+        diagnostics['network']['smtp_port'] = f"connected to {smtp_port}"
+    except Exception as e:
+        diagnostics['status'] = 'degraded'
+        diagnostics['network']['error'] = f"Failed to reach {smtp_server}:{smtp_port}: {str(e)}"
         
     return jsonify(diagnostics), 200 if diagnostics['status'] == 'healthy' else 500
 
