@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.3.2"
 
 # Initialize extensions
 db.init_app(app)
@@ -289,6 +289,34 @@ def submit_form():
             'error': f'Server Error ({e.__class__.__name__}): {str(e)}',
             'details': error_details
         }), 500
+
+@app.route('/test-email')
+@csrf.exempt # Exempt for easy testing
+def test_email():
+    """Synchronous email test to see errors directly on screen"""
+    from utils.email_service import send_via_resend
+    
+    resend_key = app.config.get('RESEND_API_KEY')
+    recipient = app.config.get('MAIL_RECIPIENT')
+    
+    if not resend_key:
+        return "ERROR: RESEND_API_KEY is missing in Railway Variables", 400
+    if not recipient:
+        return "ERROR: MAIL_RECIPIENT is missing in Railway Variables", 400
+        
+    logger.info(f"TEST EMAIL: Sending to {recipient}...")
+    success = send_via_resend(
+        api_key=resend_key,
+        from_email="onboarding@resend.dev",
+        to_email=recipient,
+        subject="Resend Test Connection",
+        html_content="<h1>Connection Successful!</h1><p>If you see this, the Resend API is working perfectly.</p>"
+    )
+    
+    if success:
+        return f"SUCCESS: Email sent to {recipient}. Please check your inbox (and SPAM)!", 200
+    else:
+        return "FAILED: Check your Railway logs for the 'RESEND API REJECTED' error message.", 500
 
 @app.route('/health')
 def health():
