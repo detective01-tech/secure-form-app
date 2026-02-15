@@ -5,4 +5,4 @@ PYTHON_VERSION = "3.11"
 pkgs = ["python", "postgresql"]
 
 [start]
-cmd = "gunicorn --bind 0.0.0.0:$PORT app:app"
+cmd = "gunicorn --bind 0.0.0.0:$PORT --timeout 120 app:app"
