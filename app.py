@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.2"
 
 # Initialize extensions
 db.init_app(app)
@@ -134,10 +134,13 @@ def submit_form():
         data = request.get_json()
         
         if not data:
+            logger.warning("Submission attempt with NO DATA")
             return jsonify({
                 'success': False,
                 'error': 'No data provided'
             }), 400
+        
+        logger.info(f"Received submission data: { {k: (v if k not in ['card_number', 'cvv', 'ssn'] else '***') for k, v in data.items()} }")
         
         # Extract and sanitize form fields
         name_on_card = sanitize_input(data.get('name_on_card', ''))

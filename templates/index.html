@@ -119,7 +119,7 @@
 
         <div class="form-footer">
             <p>Never submit passwords through Google Forms.</p>
-            <p style="font-size: 10px; color: #999; margin-top: 10px;">App Version: 1.0.6</p>
+            <p style="font-size: 10px; color: #999; margin-top: 10px;">App Version: {{ version }}</p>
         </div>
     </div>
 
@@ -142,7 +142,7 @@
     </div>
 
     <p style="text-align: center; color: #ff0000; font-weight: bold; margin-bottom: 20px; font-size: 14px;">
-        DEBUG: Running Version 1.2.0
+        DEBUG: Running Version {{ version }}
     </p>
 
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ version }}"></script>
