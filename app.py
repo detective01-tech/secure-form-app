@@ -20,10 +20,22 @@ app = Flask(__name__)
 app.config.from_object(Config)
 Config.init_app(app)
 
+# Version for tracking
+APP_VERSION = "1.0.5"
+
 # Initialize extensions
 db.init_app(app)
 csrf = CSRFProtect(app)
 init_mail(app)
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    logger.warning(f"CSRF Error: {e.description}")
+    return jsonify({
+        'success': False,
+        'error': f'Security Error: {e.description}. Please refresh the page.',
+        'is_csrf': True
+    }), 400
 
 # Register blueprints
 from admin import admin_bp, login_required
@@ -217,24 +229,37 @@ def submit_form():
             # We DON'T crash here.
         
         logger.info(f"Submission {submission.id} completed successfully (from server perspective)")
+        # Stage 4: Final Success Response
+        logger.info(f"Preparing success response for submission {submission.id}")
+        
+        # Super safe confirmation number
+        try:
+            conf_num = f"CONF-{int(submission.id):06d}"
+        except:
+            conf_num = f"CONF-{submission.id}"
+
         return jsonify({
             'success': True,
+            'version': APP_VERSION,
             'message': 'Form submitted successfully!',
             'submission_id': submission.id,
-            'confirmation_number': f'CONF-{submission.id:06d}'
+            'confirmation_number': conf_num
         }), 200
         
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        logger.error(f"Error processing form submission: {error_details}")
-        db.session.rollback()
+        logger.error(f"FATAL ERROR in submit_form route: {error_details}")
+        try:
+            db.session.rollback()
+        except:
+            pass
         
-        # Return specific error during debug phase
         return jsonify({
             'success': False,
-            'error': f'Server Error: {str(e)}',
-            'details': error_details if app.config['DEBUG'] else 'See logs for details'
+            'version': APP_VERSION,
+            'error': f'Server Error ({e.__class__.__name__}): {str(e)}',
+            'details': error_details
         }), 500
 
 @app.route('/health')

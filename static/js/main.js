@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Get CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            const response = await fetch('/submit', {
+            const response = await fetch('/submit?cache_bust=' + Date.now(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -156,7 +156,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify(data)
             });
 
+            // Log raw response if not successful
+            if (!response.ok) {
+                console.error('Server returned error status:', response.status);
+                const text = await response.text();
+                console.error('Raw error body:', text);
+                try {
+                    const result = JSON.parse(text);
+                    alert(`Server Error (${response.status}): ${result.error || 'Check console'}`);
+                    return;
+                } catch (e) {
+                    alert(`Critical System Error (${response.status}). Please check Railway logs.`);
+                    return;
+                }
+            }
+
             const result = await response.json();
+            console.log('Server response:', result);
 
             if (result.success) {
                 // Show success
