@@ -177,8 +177,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         } catch (error) {
-            console.error('Error:', error);
-            alert('A network error occurred. Please try again.');
+            console.error('Submission Error:', error);
+            alert(`A network or server error occurred: ${error.message}. Please check the console for details.`);
         } finally {
             loadingOverlay.style.display = 'none';
         }

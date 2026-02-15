@@ -216,18 +216,45 @@ def submit_form():
         }), 200
         
     except Exception as e:
-        logger.error(f"Error processing form submission: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Error processing form submission: {error_details}")
         db.session.rollback()
         
+        # Return specific error during debug phase
         return jsonify({
             'success': False,
-            'error': 'An error occurred while processing your submission. Please try again.'
+            'error': f'Server Error: {str(e)}',
+            'details': error_details if app.config['DEBUG'] else 'See logs for details'
         }), 500
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy'}), 200
+    """Health check endpoint with database diagnostics"""
+    diagnostics = {
+        'status': 'healthy',
+        'database': 'unknown',
+        'storage': 'unknown'
+    }
+    
+    # Check database
+    try:
+        db.session.execute(text('SELECT 1'))
+        diagnostics['database'] = 'connected'
+    except Exception as e:
+        diagnostics['status'] = 'unhealthy'
+        diagnostics['database'] = f'error: {str(e)}'
+        
+    # Check storage
+    try:
+        test_file = Config.SUBMISSIONS_FOLDER / 'test_write.txt'
+        test_file.write_text('test')
+        test_file.unlink()
+        diagnostics['storage'] = 'writable'
+    except Exception as e:
+        diagnostics['storage'] = f'error: {str(e)}'
+        
+    return jsonify(diagnostics), 200 if diagnostics['status'] == 'healthy' else 500
 
 @app.after_request
 def set_csrf_cookie(response):
