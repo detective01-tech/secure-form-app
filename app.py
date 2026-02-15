@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.0.7"
 
 # Initialize extensions
 db.init_app(app)
@@ -89,8 +89,8 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    """Render the main form page"""
-    return render_template('index.html')
+    """Render the main form page with version for cache busting"""
+    return render_template('index.html', version=APP_VERSION)
 
 @app.route('/favicon.ico')
 def favicon():
@@ -176,8 +176,10 @@ def submit_form():
         
         # If there are validation errors, return them
         if errors:
+            logger.warning(f"Validation errors in submission: {errors}")
             return jsonify({
                 'success': False,
+                'error': 'Form validation failed. Please check the highlighted fields.',
                 'errors': errors
             }), 400
         
