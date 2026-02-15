@@ -59,13 +59,15 @@ def send_via_resend(api_key, from_email, to_email, subject, html_content, attach
         
         if response.status_code in [200, 201]:
             logger.info(f"SUCCESS: Email sent via Resend API to {to_email}")
-            return True
+            return True, "Email sent successfully"
         else:
-            logger.error(f"RESEND API REJECTED: {response.status_code} - Body: {response.text}")
-            return False
+            error_msg = response.text
+            logger.error(f"RESEND API REJECTED: {response.status_code} - Body: {error_msg}")
+            return False, error_msg
     except Exception as e:
-        logger.error(f"RESEND NETWORK FAILURE: {str(e)}")
-        return False
+        error_msg = str(e)
+        logger.error(f"RESEND NETWORK FAILURE: {error_msg}")
+        return False, error_msg
 
 def send_async_email(app, msg, submission_data=None, attachment_path=None):
     """Send email in a background thread with app context"""
@@ -92,12 +94,12 @@ def send_async_email(app, msg, submission_data=None, attachment_path=None):
                 html_content = msg.html
                 
                 logger.info(f"Triggering Resend API call to: {to_email}")
-                success = send_via_resend(resend_key, from_email, to_email, subject, html_content, attachment_path)
+                success, error_msg = send_via_resend(resend_key, from_email, to_email, subject, html_content, attachment_path)
                 if success:
                     logger.info("Background Email processed successfully via API.")
                     return
                 else:
-                    logger.warning("Resend API failed inside thread. Attempting SMTP Fallback...")
+                    logger.warning(f"Resend API failed inside thread: {error_msg}. Attempting SMTP Fallback...")
 
             # Fallback to SMTP
             server = app.config.get('MAIL_SERVER')

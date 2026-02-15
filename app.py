@@ -22,7 +22,7 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 # Version for tracking
-APP_VERSION = "1.3.2"
+APP_VERSION = "1.3.3"
 
 # Initialize extensions
 db.init_app(app)
@@ -305,7 +305,7 @@ def test_email():
         return "ERROR: MAIL_RECIPIENT is missing in Railway Variables", 400
         
     logger.info(f"TEST EMAIL: Sending to {recipient}...")
-    success = send_via_resend(
+    success, message = send_via_resend(
         api_key=resend_key,
         from_email="onboarding@resend.dev",
         to_email=recipient,
@@ -316,7 +316,7 @@ def test_email():
     if success:
         return f"SUCCESS: Email sent to {recipient}. Please check your inbox (and SPAM)!", 200
     else:
-        return "FAILED: Check your Railway logs for the 'RESEND API REJECTED' error message.", 500
+        return f"FAILED: Resend API says: {message}", 500
 
 @app.route('/health')
 def health():
